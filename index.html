@@ -293,17 +293,21 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const demoMode=!window.location.protocol.startsWith('http')||window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1';
 async function api(path,options={}){
+  let r;
   try{
-    const r=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
-    const ct=r.headers.get('content-type')||'';
-    if(!ct.includes('application/json'))throw new Error('Offline preview mode');
-    const d=await r.json();
-    if(!r.ok)throw new Error(d?.detail||'Something went wrong');
-    return d;
+    r=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
   }catch(e){
     if(demoMode)return localApi(path,options);
     throw e;
   }
+  const ct=r.headers.get('content-type')||'';
+  if(!ct.includes('application/json')){
+    if(demoMode)return localApi(path,options);
+    throw new Error('The server returned an unexpected response.');
+  }
+  const d=await r.json();
+  if(!r.ok)throw new Error(d?.detail||'Something went wrong');
+  return d;
 }
 function localApi(path,options={}){
   const method=(options.method||'GET').toUpperCase();
@@ -367,11 +371,8 @@ let svc=DEF, bk=[], sel=new Set(), slot=null, staffToken=null;
 async function loadServerServices(){
   try{
     const remote=await api('/services');
-    const byName=new Map(remote.map(s=>[s.name.toLowerCase(),s]));
-    svc=DEF.map(s=>{
-      const r=byName.get(s.n.toLowerCase());
-      return r?{...s,id:r.slug,n:r.name,c:r.category==='cuts'?'Gentlemen':r.category==='skin'?'Skin':r.category==='nails'?'Nails':r.category==='bridal'?'Bridal':r.category==='wax'?'Waxing':r.category==='color'?'Hair':r.category==='treat'?'Hair':r.category,d:r.description,m:r.duration,p:r.price}:s;
-    });
+    const categories={cuts:'Gentlemen',skin:'Skin',nails:'Nails',bridal:'Bridal',wax:'Waxing',color:'Hair',treat:'Hair'};
+    svc=remote.map(s=>({id:s.slug,n:s.name,c:categories[s.category.toLowerCase()]||s.category,d:s.description,m:s.duration,p:s.price}));
   }catch(e){$('#msg').textContent='Database unavailable: '+e.message}
 }
 const pick=()=>svc.filter(s=>sel.has(s.id));
@@ -460,7 +461,10 @@ $('#date').onchange=$('#spec').onchange=renderSlots;
 $('#confirm').onclick=confirmB;$('#find').onclick=find;
 $('#q').onkeydown=e=>{if(e.key==='Enter')find()};
 $('#unlock').onclick=async()=>{try{const r=await api('/staff/login',{method:'POST',body:{passcode:$('#pw').value}});staffToken=r.token;$('#gate').hidden=true;$('#dash').hidden=false;renderStaff()}catch(e){$('#pw').value='';$('#pw').placeholder=e.message}};
-$('#lock').onclick=()=>{$('#dash').hidden=true;$('#gate').hidden=false;$('#pw').value=''};
+$('#lock').onclick=async()=>{
+  try{await api('/staff/logout',{method:'POST',headers:{Authorization:'Bearer '+staffToken}})}catch(e){$('#amsg').textContent=e.message}
+  staffToken=null;$('#dash').hidden=true;$('#gate').hidden=false;$('#pw').value='';
+};
 $('#fd').onchange=$('#fs').onchange=renderStaff;$('#all').onclick=()=>{$('#fd').value='';renderStaff()};
 $('#rows').onchange=async e=>{
   const id=e.target.dataset.st;if(!id)return;
