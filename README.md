@@ -11,6 +11,10 @@ The site uses an Express API and SQLite database for appointment booking, availa
 
 The database is created at `data/clarte-beaute.sqlite` by default. Keep `.env` and the database file private; both are excluded from Git.
 
+## Use with VS Code Live Server
+
+Keep the Express backend running on port 3001 with `PORT=3001 npm start`, then open `index.html` with Live Server (usually `http://127.0.0.1:5500`). The page sends API requests to the backend on port 3001.
+
 ## API
 
 - `GET /api/services`

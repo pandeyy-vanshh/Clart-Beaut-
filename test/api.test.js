@@ -14,6 +14,26 @@ function setup(t) {
   return request(app);
 }
 
+test('allows requests from local VS Code Live Server only', async t => {
+  const api = setup(t);
+  const origin = 'http://127.0.0.1:5500';
+  const preflight = await api.options('/api/staff/login')
+    .set('Origin', origin)
+    .set('Access-Control-Request-Method', 'POST')
+    .set('Access-Control-Request-Headers', 'content-type')
+    .expect(204);
+  assert.equal(preflight.headers['access-control-allow-origin'], origin);
+  assert.match(preflight.headers['access-control-allow-headers'], /Content-Type/i);
+
+  const login = await api.post('/api/staff/login')
+    .set('Origin', origin).send({ passcode: STAFF_PASSCODE }).expect(200);
+  assert.equal(login.headers['access-control-allow-origin'], origin);
+
+  const otherOrigin = await api.get('/api/services')
+    .set('Origin', 'https://example.com').expect(200);
+  assert.equal(otherOrigin.headers['access-control-allow-origin'], undefined);
+});
+
 test('services are seeded and availability prevents specialist double-booking', async t => {
   const api = setup(t);
   const services = await api.get('/api/services').expect(200);

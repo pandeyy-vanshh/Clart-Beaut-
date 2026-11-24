@@ -293,6 +293,8 @@ const GAL=[
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const demoMode=window.location.protocol==='file:';
+const liveServerMode=window.location.port==='5500'&&['localhost','127.0.0.1'].includes(window.location.hostname);
+const apiRoot=liveServerMode?`${window.location.protocol}//${window.location.hostname}:3001/api`:'/api';
 async function api(path,options={}){
   let r;
   const requestOptions={...options};
@@ -300,7 +302,7 @@ async function api(path,options={}){
     requestOptions.body=JSON.stringify(requestOptions.body);
   }
   try{
-    r=await fetch('/api'+path,{...requestOptions,headers:{'Content-Type':'application/json',...(requestOptions.headers||{})}});
+    r=await fetch(apiRoot+path,{...requestOptions,headers:{'Content-Type':'application/json',...(requestOptions.headers||{})}});
   }catch(e){
     if(demoMode)return localApi(path,options);
     throw e;
