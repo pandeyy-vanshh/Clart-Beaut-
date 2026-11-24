@@ -8,10 +8,13 @@ dotenv.config();
 
 const port = Number(process.env.PORT || 3000);
 const staffPasscode = process.env.STAFF_PASSCODE || '';
+const allowsLocalShortPasscode = process.env.NODE_ENV === 'development'
+  && process.env.ALLOW_SHORT_STAFF_PASSCODE === 'true'
+  && /^\d{4}$/.test(staffPasscode);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be a valid TCP port.');
 }
-if (staffPasscode.length < 12) {
+if (staffPasscode.length < 12 && !allowsLocalShortPasscode) {
   throw new Error('Set STAFF_PASSCODE in .env to a private value of at least 12 characters.');
 }
 

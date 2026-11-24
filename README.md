@@ -29,3 +29,5 @@ Keep the Express backend running on port 3001 with `PORT=3001 npm start`, then o
 - `POST /api/staff/services` (staff token required)
 
 For deployment, configure `STAFF_PASSCODE` as a secret and use persistent storage for the SQLite database.
+
+For local development only, a four-digit passcode can be enabled by setting `NODE_ENV=development` and `ALLOW_SHORT_STAFF_PASSCODE=true`. The server still requires at least 12 characters in production or when this opt-in is unset.
