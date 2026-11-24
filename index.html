@@ -106,7 +106,7 @@ footer .big{font:400 clamp(40px,7vw,84px) var(--serif);letter-spacing:.14em;text
 /* motion */
 .js [data-r]{opacity:0;transform:translateY(28px);transition:opacity 1.1s var(--ease),transform 1.1s var(--ease);transition-delay:var(--d,0s)}.js [data-r].in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}html{scroll-behavior:auto}.js [data-r]{opacity:1;transform:none}.strip span{padding:0}}
-@media(max-width:900px){.hero .wrap,.book,.about,.gent .wrap{grid-template-columns:1fr;gap:44px}.sum{position:static}.arch{max-width:340px;margin:auto}nav a{display:none}section{padding:72px 0}.gal{grid-template-columns:1fr 1fr}.gal .ph:first-child{aspect-ratio:4/5;min-height:0}.hero{padding-top:110px}}
+@media(max-width:900px){.hero .wrap,.book,.about,.gent .wrap{grid-template-columns:1fr;gap:44px}.sum{position:static}.arch{max-width:340px;margin:auto}nav{gap:14px}nav a,nav button[data-v="mine"]{display:none}section{padding:72px 0}.gal{grid-template-columns:1fr 1fr}.gal .ph:first-child{aspect-ratio:4/5;min-height:0}.hero{padding-top:110px}}
 </style>
 </head>
 <body id="top">
@@ -120,7 +120,7 @@ footer .big{font:400 clamp(40px,7vw,84px) var(--serif);letter-spacing:.14em;text
     </svg>
     <span>Clarté Beauté<small>Salon &amp; Grooming</small></span>
   </a>
-  <nav><a href="#services">Services</a><a href="#gentlemen">Gentlemen</a><a href="#gallery">Gallery</a><a href="#specialists">Specialists</a><button data-v="mine">My Appointments</button></nav>
+  <nav><a href="#services">Services</a><a href="#gentlemen">Gentlemen</a><a href="#gallery">Gallery</a><a href="#specialists">Specialists</a><button data-v="mine">My Appointments</button><button data-v="staff" aria-label="Open staff login">Staff Login</button></nav>
   <a class="pill" href="#services"><span id="cnt">0</span> · Book Now</a>
 </div></header>
 
@@ -222,9 +222,10 @@ footer .big{font:400 clamp(40px,7vw,84px) var(--serif);letter-spacing:.14em;text
 
 <section id="staff" hidden><div class="wrap">
   <p class="eyebrow">Staff only</p><h2>Salon dashboard</h2>
-  <div id="gate" class="f2" style="max-width:520px;grid-template-columns:1fr auto;align-items:end">
-    <label>Staff passcode<input type="password" id="pw"></label><button class="btn" id="unlock">Unlock</button>
-  </div>
+  <form id="gate" class="f2" style="max-width:520px;grid-template-columns:1fr auto;align-items:end" autocomplete="off">
+    <label>Staff passcode<input type="password" id="pw" autocomplete="current-password" aria-describedby="login-msg"></label><button class="btn" id="unlock" type="submit">Login</button>
+  </form>
+  <p id="login-msg" class="mute" role="alert"></p>
   <div id="dash" hidden>
     <div class="bar">
       <label>Day<input type="date" id="fd"></label>
@@ -251,7 +252,7 @@ footer .big{font:400 clamp(40px,7vw,84px) var(--serif);letter-spacing:.14em;text
     <text x="22" y="27.5" text-anchor="middle" fill="currentColor" font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-size="18" letter-spacing="1">CB</text>
   </svg>
   <div class="big">Clarté Beauté</div>LPU, Unimall, Kapurthala · <a href="tel:+919084983035">90849 83035</a><br>
-<button class="lnk" data-v="staff">Salon dashboard</button></div></footer>
+<button class="lnk" data-v="staff">Staff Login</button></div></footer>
 
 <script>
 /* ===== EDIT THESE ===== */
@@ -291,11 +292,15 @@ const GAL=[
 /* ===== APP ===== */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const demoMode=!window.location.protocol.startsWith('http')||window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1';
+const demoMode=window.location.protocol==='file:';
 async function api(path,options={}){
   let r;
+  const requestOptions={...options};
+  if(requestOptions.body&&typeof requestOptions.body==='object'){
+    requestOptions.body=JSON.stringify(requestOptions.body);
+  }
   try{
-    r=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+    r=await fetch('/api'+path,{...requestOptions,headers:{'Content-Type':'application/json',...(requestOptions.headers||{})}});
   }catch(e){
     if(demoMode)return localApi(path,options);
     throw e;
@@ -460,7 +465,19 @@ $('#clr').onclick=()=>{sel.clear();renderMenu();renderSum()};
 $('#date').onchange=$('#spec').onchange=renderSlots;
 $('#confirm').onclick=confirmB;$('#find').onclick=find;
 $('#q').onkeydown=e=>{if(e.key==='Enter')find()};
-$('#unlock').onclick=async()=>{try{const r=await api('/staff/login',{method:'POST',body:{passcode:$('#pw').value}});staffToken=r.token;$('#gate').hidden=true;$('#dash').hidden=false;renderStaff()}catch(e){$('#pw').value='';$('#pw').placeholder=e.message}};
+$('#gate').onsubmit=async e=>{
+  e.preventDefault();
+  const passcode=$('#pw').value;
+  $('#login-msg').textContent='';
+  if(!passcode){$('#login-msg').textContent='Enter your staff passcode.';return}
+  try{
+    const r=await api('/staff/login',{method:'POST',body:{passcode}});
+    staffToken=r.token;$('#gate').hidden=true;$('#login-msg').textContent='';$('#dash').hidden=false;renderStaff();
+  }catch(e){
+    $('#pw').value='';
+    $('#login-msg').textContent=e.message;
+  }
+};
 $('#lock').onclick=async()=>{
   try{await api('/staff/logout',{method:'POST',headers:{Authorization:'Bearer '+staffToken}})}catch(e){$('#amsg').textContent=e.message}
   staffToken=null;$('#dash').hidden=true;$('#gate').hidden=false;$('#pw').value='';

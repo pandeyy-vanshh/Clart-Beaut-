@@ -75,6 +75,29 @@ test('staff routes require a token and allow service management after login', as
   await api.get('/api/staff/appointments').set(authorization).expect(401);
 });
 
+test('staff appointments include client and service details for live bookings', async t => {
+  const api = setup(t);
+  const service = (await api.get('/api/services').expect(200)).body
+    .find(item => item.slug === 'signature-haircut');
+  await api.post('/api/appointments').send({
+    name: 'Test Client',
+    phone: '9876543210',
+    date: FUTURE_DATE,
+    time: '10:00',
+    specialist_id: 'Reeta',
+    service_ids: [service.slug]
+  }).expect(201);
+
+  const login = await api.post('/api/staff/login')
+    .send({ passcode: STAFF_PASSCODE }).expect(200);
+  const appointments = await api.get('/api/staff/appointments')
+    .set({ Authorization: `Bearer ${login.body.token}` }).expect(200);
+  assert.equal(appointments.body.length, 1);
+  assert.equal(appointments.body[0].name, 'Test Client');
+  assert.equal(appointments.body[0].phone, '9876543210');
+  assert.deepEqual(appointments.body[0].services.map(item => item.name), [service.name]);
+});
+
 test('booking validation rejects past dates and invalid service IDs', async t => {
   const api = setup(t);
   await api.post('/api/appointments').send({
