@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: clarte-beaute
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: STAFF_PASSCODE
+        sync: false
